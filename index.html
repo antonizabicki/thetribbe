@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>welcome to the tribbe</title>
+    
+    <!-- FAVICON -->
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    
+    <!-- Smooth Scroll & GSAP -->
+    <script src="https://unpkg.com/@studio-freight/lenis@1.0.34/dist/lenis.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg: #000000;
+            --text: #ffffff;
+            --text-muted: #666666;
+            --cyan: #00e5ff;
+        }
+
+        /* --- RESET, NO-SELECT, UKRYCIE SCROLLBARA --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: none !important;
+        }
+
+        ::-webkit-scrollbar { display: none; }
+        
+        body {
+            -ms-overflow-style: none; 
+            scrollbar-width: none; 
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Manrope', sans-serif;
+            text-transform: lowercase;
+            letter-spacing: -0.03em;
+            -webkit-font-smoothing: antialiased;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        img {
+            pointer-events: none;
+            -webkit-user-drag: none;
+        }
+
+        /* --- TŁO: BLOBS (PRAWIE CZARNE) --- */
+        .blob-container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 1; 
+            overflow: hidden;
+            pointer-events: none;
+            filter: blur(90px);
+            background: #000;
+        }
+
+        .blob-wrapper {
+            position: absolute;
+            will-change: transform;
+        }
+
+        .blob {
+            border-radius: 50%;
+            will-change: transform;
+        }
+
+        .blob.white {
+            width: 45vw; height: 45vw;
+            background: #ffffff;
+            opacity: 0.03; /* Ekstremalnie ciemne, subtelny efekt */
+        }
+
+        /* Wstępne pozycje blobów */
+        .white-w1 { top: -10%; left: -10%; }
+        .white-w2 { bottom: -15%; right: -5%; }
+
+        /* --- DROBNY RUCHOMY NOISE --- */
+        body::after {
+            content: "";
+            position: fixed;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='4' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.05;
+            pointer-events: none;
+            z-index: 9999;
+            animation: noiseAnim 0.15s infinite steps(2);
+        }
+
+        @keyframes noiseAnim {
+            0% { transform: translate(0, 0); }
+            20% { transform: translate(-1%, 1%); }
+            40% { transform: translate(1%, -1%); }
+            60% { transform: translate(-1%, -1%); }
+            80% { transform: translate(1%, 1%); }
+            100% { transform: translate(0, 0); }
+        }
+
+        /* --- KURSOR 1: GÓRNA SEKCJA (KROPKA) --- */
+        #top-cursor {
+            position: fixed;
+            top: 0; left: 0;
+            width: 14px; height: 14px;
+            background-color: var(--text);
+            border-radius: 50%;
+            pointer-events: none;
+            mix-blend-mode: difference;
+            z-index: 10000;
+            transition: width 0.3s cubic-bezier(0.19, 1, 0.22, 1), 
+                        height 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+                        opacity 0.3s;
+        }
+
+        /* --- KURSOR 2: TARGET CURSOR (TOUR & SOCIALS) --- */
+        .target-cursor-wrapper {
+            position: fixed;
+            top: 0; left: 0;
+            width: 0; height: 0;
+            pointer-events: none;
+            z-index: 10000;
+            mix-blend-mode: difference;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .target-cursor-dot {
+            position: absolute;
+            left: -1px; top: -1px;
+            width: 2px; height: 2px;
+            background: #fff;
+            border-radius: 50%;
+            will-change: transform, opacity;
+        }
+
+        .target-cursor-corner {
+            position: absolute;
+            width: 12px; height: 12px;
+            border: 3px solid #fff;
+            will-change: transform;
+        }
+
+        .corner-tl { border-right: none; border-bottom: none; }
+        .corner-tr { border-left: none; border-bottom: none; }
+        .corner-br { border-left: none; border-top: none; }
+        .corner-bl { border-right: none; border-top: none; }
+
+        /* --- PRAWY PRZYCISK MYSZY (CONTEXT MENU) --- */
+        .custom-context-menu {
+            position: fixed;
+            background-color: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid #222;
+            border-radius: 8px;
+            padding: 10px 0;
+            min-width: 200px;
+            z-index: 100000;
+            display: none;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+            font-weight: 800;
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+
+        .custom-context-menu.show { display: block; opacity: 1; transform: scale(1); }
+
+        .custom-context-menu a {
+            display: block;
+            padding: 12px 25px;
+            color: #ccc;
+            text-decoration: none;
+            font-size: 12px;
+            transition: all 0.2s;
+            cursor: none;
+        }
+
+        .custom-context-menu a:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--cyan);
+            padding-left: 35px;
+        }
+
+        /* --- MENU BAR --- */
+        nav {
+            position: fixed;
+            top: 0; left: 0; width: 100%;
+            padding: 30px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            mix-blend-mode: difference; 
+        }
+
+        .nav-links { display: flex; gap: 40px; }
+        
+        a, button {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 16px; 
+            font-weight: 800; 
+            background: none;
+            border: none;
+            transition: color 0.3s ease;
+            outline: none;
+            pointer-events: auto;
+            display: inline-block; 
+        }
+
+        .hover-target:hover, .cursor-target:hover { color: var(--text); }
+
+        /* --- WARSTWY I SEKCJE --- */
+        .main-wrapper {
+            position: relative;
+            z-index: 2;
+            background-color: transparent; 
+        }
+
+        .panel {
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 15vh 10vw;
+            position: relative;
+        }
+
+        /* --- HERO --- */
+        .hero {
+            align-items: center;
+        }
+
+        .main-logo {
+            width: 30vw;
+            min-width: 250px;
+            max-width: 450px;
+            margin-top: 17vh; /* DODANE: Obniża logo lekko w dół */
+            transform-origin: center center;
+            will-change: transform, opacity;
+        }
+
+        /* --- O NAS --- */
+        .section-label {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--text-muted);
+            margin-bottom: 4vh;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .section-label span { color: var(--cyan); }
+
+        .about-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 50px;
+            align-items: center;
+        }
+
+        @media (min-width: 1024px) {
+            .about-layout { grid-template-columns: 1fr 1fr; gap: 100px; }
+        }
+
+        .huge-title {
+            font-size: clamp(50px, 8vw, 130px);
+            font-weight: 800;
+            line-height: 0.9;
+            color: var(--text);
+            will-change: transform;
+        }
+
+        .desc-wrapper p {
+            font-size: clamp(16px, 1.5vw, 22px);
+            font-weight: 400;
+            line-height: 1.5;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            will-change: opacity, transform;
+        }
+
+        .desc-wrapper p strong { color: var(--text); font-weight: 800; }
+
+        /* --- TRASA --- */
+        #tour {
+            position: relative;
+            z-index: 10;
+        }
+
+        .tour-list {
+            margin-top: 50px;
+            border-top: 2px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tour-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: padding 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s;
+            pointer-events: auto;
+        }
+
+        .tour-item:hover {
+            padding-left: 20px;
+            padding-right: 20px;
+            border-bottom-color: var(--cyan);
+        }
+
+        .tour-date { font-size: 18px; font-weight: 800; color: var(--text-muted); width: 100px;}
+        .tour-city { font-size: clamp(20px, 3.5vw, 40px); font-weight: 800; transition: color 0.3s; text-align: right;}
+        
+        .tour-item:hover .tour-city { color: var(--cyan); }
+
+        .hidden-tours {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 1s cubic-bezier(0.85, 0, 0.15, 1);
+        }
+
+        .hidden-tours.expanded { max-height: 3000px; }
+
+        .expand-btn {
+            margin-top: 40px;
+            font-size: 18px;
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 15px 30px;
+            border-radius: 50px;
+            align-self: flex-start;
+            transition: background 0.3s, color 0.3s, border-color 0.3s;
+            pointer-events: auto;
+        }
+
+        .expand-btn:hover { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+        /* --- SOCIALS --- */
+        .socials-section {
+            padding: 10vh 10vw 10vh 10vw;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .social-link {
+            font-size: clamp(40px, 6vw, 80px);
+            font-weight: 800;
+            color: var(--text-muted);
+            width: max-content;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            pointer-events: auto;
+        }
+
+        .social-link span { opacity: 0; transition: opacity 0.3s, transform 0.3s; transform: translateX(-20px); }
+        .social-link:hover { color: var(--text); }
+        .social-link:hover span { opacity: 1; transform: translateX(0); color: var(--cyan); font-size: 0.5em; }
+
+        /* --- STYLOWA STOPKA --- */
+        .main-footer {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 10vh 5vw 5vh 5vw;
+            background: #000;
+            position: relative;
+            z-index: 10;
+        }
+
+        .footer-center {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .footer-center a {
+            font-size: clamp(50px, 12vw, 200px);
+            font-weight: 800;
+            line-height: 0.85;
+            color: var(--text);
+            text-decoration: none;
+            transition: color 0.3s ease;
+            pointer-events: auto;
+        }
+
+        .footer-center a:hover { color: var(--cyan); }
+
+        .footer-bottom {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 30px;
+        }
+
+        @media (min-width: 768px) {
+            .footer-bottom {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            font-size: 14px;
+            color: var(--text-muted);
+            pointer-events: auto;
+        }
+
+        .footer-links a:hover { color: var(--cyan); }
+
+        .footer-copy {
+            font-size: 14px;
+            color: #444;
+            font-weight: 800;
+        }
+
+        @media (max-width: 768px) {
+            nav { padding: 20px; }
+            .nav-links { gap: 15px; }
+            .tour-item { padding: 20px 0; }
+            .tour-item:hover { padding-left: 0; padding-right: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- BLOBS TŁO -->
+    <div class="blob-container">
+        <div class="blob-wrapper white-w1"><div class="blob white"></div></div>
+        <div class="blob-wrapper white-w2"><div class="blob white"></div></div>
+    </div>
+
+    <!-- CONTEXT MENU (PRAWY PRZYCISK MYSZY) -->
+    <div id="custom-context-menu" class="custom-context-menu">
+        <a href="https://instagram.com/tribbs_music" target="_blank" class="hover-target">instagram ↗</a>
+        <a href="https://facebook.com/tribbsmusic" target="_blank" class="hover-target">facebook ↗</a>
+        <a href="https://discord.gg/yEBdPbE5kB" target="_blank" class="hover-target">discord ↗</a>
+        <a href="https://store.thetribbe.com" target="_blank" class="hover-target">store ↗</a>
+    </div>
+
+    <!-- KURSOR 1 (TOP) -->
+    <div id="top-cursor"></div>
+
+    <!-- KURSOR 2 (BOTTOM: TARGET GSAP) -->
+    <div id="target-cursor" class="target-cursor-wrapper">
+        <div class="target-cursor-dot"></div>
+        <div class="target-cursor-corner corner-tl"></div>
+        <div class="target-cursor-corner corner-tr"></div>
+        <div class="target-cursor-corner corner-br"></div>
+        <div class="target-cursor-corner corner-bl"></div>
+    </div>
+
+    <!-- NAWIGACJA -->
+    <nav>
+        <div class="nav-links">
+            <a href="#about" class="hover-target nav-link" data-en="about" data-pl="o nas">about</a>
+            <a href="#tour" class="hover-target nav-link" data-en="tour" data-pl="trasa">tour</a>
+        </div>
+        <div class="nav-links">
+            <a href="https://store.thetribbe.com" target="_blank" class="hover-target">store</a>
+            <button class="hover-target" onclick="toggleLang()">pl / en</button>
+        </div>
+    </nav>
+
+    <!-- WRAPPER -->
+    <div class="main-wrapper">
+        
+        <!-- HERO -->
+        <section class="panel hero" id="hero">
+            <img src="logo.svg" alt="the tribbe logo" class="main-logo">
+        </section>
+
+        <!-- O NAS -->
+        <section class="panel about" id="about">
+            <div class="section-label">
+                <span>(01)</span> <p data-en="who we are" data-pl="kim jesteśmy">who we are</p>
+            </div>
+            
+            <div class="about-layout">
+                <div class="title-wrapper">
+                    <h2 class="huge-title" data-en="welcome to the tribbe." data-pl="witaj w the tribbe.">
+                        welcome to the tribbe.
+                    </h2>
+                </div>
+                
+                <div class="desc-wrapper">
+                    <p class="desc-line" data-en="in a world full of noise and chaos, there’s one beat, one vision, one heart that unites them. this is the tribbe." data-pl="w świecie pełnym hałasu i chaosu jest jeden rytm, jedna wizja. to the tribbe.">
+                        in a world full of noise and chaos, there’s one beat, one vision, one heart that unites them. this is the tribbe.
+                    </p>
+                    <p class="desc-line" data-en="it’s a tribe of people who believe dreams aren’t just fantasies. not everyone can be part of it." data-pl="to plemię ludzi, którzy wiedzą, że marzenia to nie tylko fantazje. nie każdy może być tego częścią.">
+                        it’s a tribe of people who believe dreams aren’t just fantasies. not everyone can be part of it.
+                    </p>
+                    <p class="desc-line" data-en="it’s not just about enjoying the music – it’s about chasing something bigger. lived at full volume." data-pl="tu nie chodzi tylko o muzykę – chodzi o gonitwę za czymś większym. przeżywane na pełnej głośności.">
+                        it’s not just about enjoying the music – it’s about chasing something bigger. <strong>lived at full volume.</strong>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- TRASA -->
+        <section class="panel" id="tour" style="min-height: auto;">
+            <div class="section-label">
+                <span>(02)</span> <p data-en="upcoming shows" data-pl="nadchodzące występy">upcoming shows</p>
+            </div>
+
+            <div class="tour-list" id="tourListWrapper">
+                <a href="#" class="tour-item cursor-target"><span class="tour-date">1/05</span><span class="tour-city">gryfino</span></a>
+                <a href="#" class="tour-item cursor-target"><span class="tour-date">2/05</span><span class="tour-city">jelcz laskowice</span></a>
+                <a href="#" class="tour-item cursor-target"><span class="tour-date">9/05</span><span class="tour-city">the voice kids finał</span></a>
+                <a href="#" class="tour-item cursor-target"><span class="tour-date">16/05</span><span class="tour-city">tba</span></a>
+                <a href="#" class="tour-item cursor-target"><span class="tour-date">23/05</span><span class="tour-city">tba</span></a>
+
+                <div class="hidden-tours" id="hiddenTours">
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">29/05</span><span class="tour-city">kostrzyn</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">30/05</span><span class="tour-city">korgowa</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">31/05</span><span class="tour-city">łódź see bloggers</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">6/06</span><span class="tour-city">bartoszyce</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">13/06</span><span class="tour-city">siechnice</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">14/06</span><span class="tour-city">tba</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">17/06</span><span class="tour-city">warsaw music festival</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">20/06</span><span class="tour-city">tba</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">21/06</span><span class="tour-city">kępno</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">26/06</span><span class="tour-city">tba</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">27/06</span><span class="tour-city">jarosław</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">28/06</span><span class="tour-city">trzebinia</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">4/07</span><span class="tour-city">skarszewy</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">5/07</span><span class="tour-city">sosnowiec</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">11/07</span><span class="tour-city">mława</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">19/07</span><span class="tour-city">szczytno</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">1/08</span><span class="tour-city">tba</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">8/08</span><span class="tour-city">potęgowo</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">21/08</span><span class="tour-city">sochaczew</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">22/08</span><span class="tour-city">tba</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">28/08</span><span class="tour-city">kościerzyna</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">29/08</span><span class="tour-city">tba</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">5/09</span><span class="tour-city">tba</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">19/09</span><span class="tour-city">tba</span></a>
+                    <a href="#" class="tour-item cursor-target"><span class="tour-date">20/09</span><span class="tour-city">tba</span></a>
+                </div>
+            </div>
+            
+            <button class="expand-btn cursor-target" id="expandBtn" onclick="toggleTour()" data-en="[+] show full tour" data-pl="[+] pokaż całą trasę">[+] show full tour</button>
+        </section>
+
+        <!-- SOCIALS -->
+        <section class="socials-section">
+            <div class="section-label">
+                <span>(03)</span> <p data-en="connect" data-pl="połącz się">connect</p>
+            </div>
+            <a href="https://instagram.com/tribbs_music" target="_blank" class="social-link cursor-target">instagram <span>↗</span></a>
+            <a href="https://facebook.com/tribbsmusic" target="_blank" class="social-link cursor-target">facebook <span>↗</span></a>
+            <a href="https://discord.gg/yEBdPbE5kB" target="_blank" class="social-link cursor-target">discord <span>↗</span></a>
+        </section>
+        
+    </div>
+
+    <!-- STYLOWA STOPKA -->
+    <footer class="main-footer">
+        <div class="footer-center">
+            <a href="https://discord.gg/yEBdPbE5kB" target="_blank" class="cursor-target" data-en="join discord." data-pl="dołącz na discord.">join discord.</a>
+        </div>
+        <div class="footer-bottom">
+            <div class="footer-links">
+                <a href="https://instagram.com/tribbs_music" target="_blank" class="cursor-target">instagram</a>
+                <a href="https://facebook.com/tribbsmusic" target="_blank" class="cursor-target">facebook</a>
+                <a href="https://discord.gg/yEBdPbE5kB" target="_blank" class="cursor-target">discord</a>
+                <a href="https://store.thetribbe.com" target="_blank" class="cursor-target">store</a>
+            </div>
+            <div class="footer-copy">© 2026 the tribbe.</div>
+        </div>
+    </footer>
+
+    <script>
+        // --- 1. SMOOTH SCROLL (LENIS) ---
+        const lenis = new Lenis({
+            duration: 1.2,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            smooth: true,
+            direction: 'vertical'
+        });
+
+        lenis.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add((time) => { lenis.raf(time * 1000); });
+        gsap.ticker.lagSmoothing(0, 0);
+
+        document.querySelectorAll('a.nav-link[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    lenis.scrollTo(targetElement, {
+                        offset: 0,
+                        duration: 1.5,
+                        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
+                    });
+                }
+            });
+        });
+
+        // --- 2. GSAP SCROLLYTELLING ANIMATIONS & ENTRY ---
+        gsap.registerPlugin(ScrollTrigger);
+
+        gsap.from("nav a, nav button", { y: -20, opacity: 0, stagger: 0.1, duration: 1, ease: "power3.out", delay: 0.1 });
+
+        // NOWA LOGIKA LOGO - WYDŁUŻONA ANIMACJA + BRAK PIN-SPACING
+        let heroTl = gsap.timeline({
+            scrollTrigger: {
+                trigger: "#hero",
+                start: "top top",
+                end: "+=100%", // Wydłużony czas scrollowania dla logo
+                scrub: 1,
+                pin: true,
+                pinSpacing: false 
+            }
+        });
+        heroTl.to(".main-logo", { scale: 12, opacity: 0, ease: "power1.inOut" });
+
+        let aboutTl = gsap.timeline({
+            scrollTrigger: {
+                trigger: "#about",
+                start: "top top",
+                end: "+=80%",
+                scrub: 1,
+                pin: true
+            }
+        });
+        aboutTl.to(".huge-title", { scale: 0.9, opacity: 0.8, duration: 1 })
+               .from(".desc-line", { y: 80, opacity: 0, stagger: 0.3, duration: 1 }, "<");
+
+
+        // --- 3. ANIMACJA TŁA (BLOBS) ---
+        gsap.utils.toArray('.blob').forEach(blob => {
+            gsap.to(blob, {
+                x: "random(-100, 100, 10)",
+                y: "random(-100, 100, 10)",
+                scale: "random(0.8, 1.2)",
+                duration: "random(4, 8)",
+                repeat: -1,
+                yoyo: true,
+                ease: "sine.inOut"
+            });
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            const xPos = (e.clientX / window.innerWidth - 0.5) * 150;
+            const yPos = (e.clientY / window.innerHeight - 0.5) * 150;
+            
+            gsap.to('.white-w1', { x: xPos * 0.8, y: yPos * 0.8, duration: 2, ease: "power2.out" });
+            gsap.to('.white-w2', { x: -xPos * 0.5, y: -yPos * 0.5, duration: 2.5, ease: "power2.out" });
+        });
+
+        // --- 4. PRZYCISKI MAGNETYCZNE ---
+        document.querySelectorAll('nav a, nav button, .expand-btn').forEach(el => {
+            el.addEventListener('mousemove', (e) => {
+                const rect = el.getBoundingClientRect();
+                const x = (e.clientX - rect.left - rect.width / 2) * 0.3;
+                const y = (e.clientY - rect.top - rect.height / 2) * 0.3;
+                gsap.to(el, { x: x, y: y, duration: 0.3, ease: 'power2.out' });
+            });
+            el.addEventListener('mouseleave', () => {
+                gsap.to(el, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.3)' });
+            });
+        });
+
+
+        // --- 5. LOGIKA KURSORA ---
+        const topCursor = document.getElementById('top-cursor');
+        const targetCursor = document.getElementById('target-cursor');
+        const targetDot = targetCursor.querySelector('.target-cursor-dot');
+        const corners = targetCursor.querySelectorAll('.target-cursor-corner');
+        
+        let mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
+        let topCursorX = mouseX, topCursorY = mouseY;
+        
+        let inBottomZone = false;
+        let activeTarget = null;
+        let activeStrength = { current: 0 };
+        
+        const cornerSize = 12, borderWidth = 3;
+        const initialPositions =[
+            { x: -cornerSize * 1.5, y: -cornerSize * 1.5 },
+            { x: cornerSize * 0.5, y: -cornerSize * 1.5 },
+            { x: cornerSize * 0.5, y: cornerSize * 0.5 },
+            { x: -cornerSize * 1.5, y: cornerSize * 0.5 }
+        ];
+        
+        gsap.set(topCursor, { xPercent: -50, yPercent: -50 });
+        gsap.set(targetCursor, { xPercent: -50, yPercent: -50 });
+        corners.forEach((corner, i) => gsap.set(corner, { x: initialPositions[i].x, y: initialPositions[i].y }));
+        let spinTl = gsap.timeline({ repeat: -1 }).to(targetCursor, { rotation: '+=360', duration: 2, ease: 'none' });
+
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+
+            const tourElement = document.getElementById('tour');
+            if (tourElement) {
+                const tourTop = tourElement.getBoundingClientRect().top;
+                const isBottom = mouseY >= tourTop;
+                
+                if (isBottom !== inBottomZone) {
+                    inBottomZone = isBottom;
+                    if (inBottomZone) {
+                        topCursor.style.opacity = '0';
+                        targetCursor.style.opacity = '1';
+                    } else {
+                        topCursor.style.opacity = '1';
+                        targetCursor.style.opacity = '0';
+                        if (activeTarget) leaveTarget(activeTarget);
+                    }
+                }
+            }
+
+            if (inBottomZone) {
+                gsap.to(targetCursor, { x: mouseX, y: mouseY, duration: 0.1, ease: 'power3.out', overwrite: 'auto' });
+            }
+        });
+
+        function animateTopCursor() {
+            if (!inBottomZone) {
+                topCursorX += (mouseX - topCursorX) * 0.2;
+                topCursorY += (mouseY - topCursorY) * 0.2;
+                gsap.set(topCursor, { x: topCursorX, y: topCursorY });
+            }
+            requestAnimationFrame(animateTopCursor);
+        }
+        animateTopCursor();
+
+        document.querySelectorAll('.hover-target, a, button').forEach(target => {
+            target.addEventListener('mouseenter', () => {
+                if (!inBottomZone) {
+                    topCursor.style.width = '60px'; topCursor.style.height = '60px';
+                }
+            });
+            target.addEventListener('mouseleave', () => {
+                if (!inBottomZone) {
+                    topCursor.style.width = '14px'; topCursor.style.height = '14px';
+                }
+            });
+        });
+
+        document.querySelectorAll('.cursor-target').forEach(target => {
+            target.addEventListener('mouseenter', () => {
+                if (inBottomZone) enterTarget(target);
+            });
+            target.addEventListener('mouseleave', () => {
+                if (inBottomZone) leaveTarget(target);
+            });
+        });
+
+        function enterTarget(target) {
+            if (activeTarget === target) return;
+            if (activeTarget) leaveTarget(activeTarget);
+            activeTarget = target;
+            
+            spinTl.pause();
+            gsap.killTweensOf(targetCursor, "rotation");
+            gsap.set(targetCursor, { rotation: 0 });
+            gsap.to(targetDot, { scale: 0, opacity: 0, duration: 0.2, overwrite: true });
+            
+            gsap.killTweensOf(corners);
+            gsap.to(activeStrength, { current: 1, duration: 0.2, ease: 'power2.out', overwrite: true });
+            gsap.ticker.add(tickCorners);
+        }
+
+        function leaveTarget(target) {
+            if (activeTarget !== target) return;
+            
+            gsap.ticker.remove(tickCorners);
+            activeTarget = null;
+            gsap.to(activeStrength, { current: 0, duration: 0.2, overwrite: true });
+            
+            gsap.to(targetDot, { scale: 1, opacity: 1, duration: 0.2, overwrite: true });
+            
+            corners.forEach((corner, i) => {
+                gsap.to(corner, { x: initialPositions[i].x, y: initialPositions[i].y, duration: 0.3, ease: 'power3.out', overwrite: true });
+            });
+            
+            setTimeout(() => {
+                if (!activeTarget) {
+                    spinTl.kill();
+                    gsap.set(targetCursor, { rotation: 0 });
+                    spinTl = gsap.timeline({ repeat: -1 }).to(targetCursor, { rotation: 360, duration: 2, ease: 'none' });
+                }
+            }, 50);
+        }
+
+        function tickCorners() {
+            if (!activeTarget) return;
+            const strength = activeStrength.current;
+            if (strength === 0) return;
+            
+            const rect = activeTarget.getBoundingClientRect();
+            
+            let pad = 0;
+            if (activeTarget.closest('.main-footer') || activeTarget.classList.contains('social-link')) {
+                pad = 25; 
+            }
+            
+            const targetCornerPositions =[
+                { x: rect.left - borderWidth - pad, y: rect.top - borderWidth - pad },
+                { x: rect.right + borderWidth - cornerSize + pad, y: rect.top - borderWidth - pad },
+                { x: rect.right + borderWidth - cornerSize + pad, y: rect.bottom + borderWidth - cornerSize + pad },
+                { x: rect.left - borderWidth - pad, y: rect.bottom + borderWidth - cornerSize + pad }
+            ];
+            
+            const cursorX = gsap.getProperty(targetCursor, 'x');
+            const cursorY = gsap.getProperty(targetCursor, 'y');
+            const duration = strength >= 0.99 ? 0.1 : 0.05;
+            
+            corners.forEach((corner, i) => {
+                const tx = targetCornerPositions[i].x - cursorX;
+                const ty = targetCornerPositions[i].y - cursorY;
+                const currentX = gsap.getProperty(corner, 'x');
+                const currentY = gsap.getProperty(corner, 'y');
+                
+                const finalX = currentX + (tx - currentX) * strength;
+                const finalY = currentY + (ty - currentY) * strength;
+                
+                gsap.to(corner, { x: finalX, y: finalY, duration: duration, ease: duration === 0 ? 'none' : 'power2.out', overwrite: 'auto' });
+            });
+        }
+
+        // --- 6. TŁUMACZENIE ---
+        let currentLang = 'en';
+        function toggleLang() {
+            currentLang = currentLang === 'en' ? 'pl' : 'en';
+            document.querySelectorAll('[data-en][data-pl]').forEach(el => {
+                el.innerHTML = el.getAttribute(`data-${currentLang}`);
+            });
+        }
+
+        // --- 7. ROZWIJANIE TRASY ---
+        const hiddenTours = document.getElementById('hiddenTours');
+        const expandBtn = document.getElementById('expandBtn');
+        let isExpanded = false;
+
+        function toggleTour() {
+            isExpanded = !isExpanded;
+            if (isExpanded) {
+                hiddenTours.classList.add('expanded');
+                expandBtn.innerHTML = currentLang === 'en' ? '[-] hide tour' : '[-] ukryj trasę';
+                expandBtn.setAttribute('data-en', '[-] hide tour');
+                expandBtn.setAttribute('data-pl', '[-] ukryj trasę');
+            } else {
+                hiddenTours.classList.remove('expanded');
+                expandBtn.innerHTML = currentLang === 'en' ? '[+] show full tour' : '[+] pokaż całą trasę';
+                expandBtn.setAttribute('data-en', '[+] show full tour');
+                expandBtn.setAttribute('data-pl', '[+] pokaż całą trasę');
+                lenis.scrollTo('#tour', { offset: -50 });
+            }
+            setTimeout(() => { ScrollTrigger.refresh(); }, 1000);
+        }
+
+        // --- 8. PRAWY PRZYCISK MYSZY (CONTEXT MENU) ---
+        const contextMenu = document.getElementById('custom-context-menu');
+        document.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            contextMenu.classList.add('show');
+            let x = e.clientX;
+            let y = e.clientY;
+            
+            if (x + contextMenu.offsetWidth > window.innerWidth) x = window.innerWidth - contextMenu.offsetWidth - 10;
+            if (y + contextMenu.offsetHeight > window.innerHeight) y = window.innerHeight - contextMenu.offsetHeight - 10;
+            
+            contextMenu.style.left = `${x}px`;
+            contextMenu.style.top = `${y}px`;
+        });
+
+        document.addEventListener('click', e => {
+            if(e.button !== 2) contextMenu.classList.remove('show');
+        });
+    </script>
+</body>
+</html>
